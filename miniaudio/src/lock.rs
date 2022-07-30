@@ -1,5 +1,6 @@
 use std::cell::UnsafeCell;
-use std::sync::atomic::{spin_loop_hint, AtomicUsize, Ordering};
+use std::hint::spin_loop;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct SpinRwLock<T> {
     /// This either contains the number of readers using all of the bits above the first (0th bit),
@@ -22,7 +23,7 @@ impl<T> SpinRwLock<T> {
             if let Some(guard) = self.try_write() {
                 return guard;
             } else {
-                spin_loop_hint();
+                spin_loop();
             }
         }
     }
@@ -32,14 +33,18 @@ impl<T> SpinRwLock<T> {
             if let Some(guard) = self.try_read() {
                 return guard;
             } else {
-                spin_loop_hint();
+                spin_loop();
             }
         }
     }
 
     pub fn try_write(&self) -> Option<RwLockWriteGuard<'_, T>> {
         // Try to set the writer bit if there are no other readers and writers.
-        if self.lock.compare_and_swap(0, 1, Ordering::Acquire) == 0 {
+        if self
+            .lock
+            .compare_exchange(0, 1, Ordering::Acquire, Ordering::Acquire)
+            == Ok(0)
+        {
             Some(RwLockWriteGuard { lock: self })
         } else {
             None
