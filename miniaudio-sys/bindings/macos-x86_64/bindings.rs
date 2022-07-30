@@ -2,7 +2,7 @@
 
 pub const MA_VERSION_MAJOR: u32 = 0;
 pub const MA_VERSION_MINOR: u32 = 10;
-pub const MA_VERSION_REVISION: u32 = 31;
+pub const MA_VERSION_REVISION: u32 = 32;
 pub const MA_TRUE: u32 = 1;
 pub const MA_FALSE: u32 = 0;
 pub const MA_SIZE_MAX: u32 = 4294967295;
@@ -137,24 +137,8 @@ pub const MA_FAILED_TO_INIT_BACKEND: i32 = -300;
 pub const MA_FAILED_TO_OPEN_BACKEND_DEVICE: i32 = -301;
 pub const MA_FAILED_TO_START_BACKEND_DEVICE: i32 = -302;
 pub const MA_FAILED_TO_STOP_BACKEND_DEVICE: i32 = -303;
-pub const MA_SAMPLE_RATE_8000: u32 = 8000;
-pub const MA_SAMPLE_RATE_11025: u32 = 11025;
-pub const MA_SAMPLE_RATE_16000: u32 = 16000;
-pub const MA_SAMPLE_RATE_22050: u32 = 22050;
-pub const MA_SAMPLE_RATE_24000: u32 = 24000;
-pub const MA_SAMPLE_RATE_32000: u32 = 32000;
-pub const MA_SAMPLE_RATE_44100: u32 = 44100;
-pub const MA_SAMPLE_RATE_48000: u32 = 48000;
-pub const MA_SAMPLE_RATE_88200: u32 = 88200;
-pub const MA_SAMPLE_RATE_96000: u32 = 96000;
-pub const MA_SAMPLE_RATE_176400: u32 = 176400;
-pub const MA_SAMPLE_RATE_192000: u32 = 192000;
-pub const MA_SAMPLE_RATE_352800: u32 = 352800;
-pub const MA_SAMPLE_RATE_384000: u32 = 384000;
 pub const MA_MIN_CHANNELS: u32 = 1;
 pub const MA_MAX_CHANNELS: u32 = 32;
-pub const MA_MIN_SAMPLE_RATE: u32 = 8000;
-pub const MA_MAX_SAMPLE_RATE: u32 = 384000;
 pub const MA_MAX_FILTER_ORDER: u32 = 8;
 pub const MA_STATE_UNINITIALIZED: u32 = 0;
 pub const MA_STATE_STOPPED: u32 = 1;
@@ -496,6 +480,24 @@ pub const ma_format_s32: ma_format = 4;
 pub const ma_format_f32: ma_format = 5;
 pub const ma_format_count: ma_format = 6;
 pub type ma_format = ::std::os::raw::c_uint;
+pub const ma_standard_sample_rate_48000: ma_standard_sample_rate = 48000;
+pub const ma_standard_sample_rate_44100: ma_standard_sample_rate = 44100;
+pub const ma_standard_sample_rate_32000: ma_standard_sample_rate = 32000;
+pub const ma_standard_sample_rate_24000: ma_standard_sample_rate = 24000;
+pub const ma_standard_sample_rate_22050: ma_standard_sample_rate = 22050;
+pub const ma_standard_sample_rate_88200: ma_standard_sample_rate = 88200;
+pub const ma_standard_sample_rate_96000: ma_standard_sample_rate = 96000;
+pub const ma_standard_sample_rate_176400: ma_standard_sample_rate = 176400;
+pub const ma_standard_sample_rate_192000: ma_standard_sample_rate = 192000;
+pub const ma_standard_sample_rate_16000: ma_standard_sample_rate = 16000;
+pub const ma_standard_sample_rate_11025: ma_standard_sample_rate = 11250;
+pub const ma_standard_sample_rate_8000: ma_standard_sample_rate = 8000;
+pub const ma_standard_sample_rate_352800: ma_standard_sample_rate = 352800;
+pub const ma_standard_sample_rate_384000: ma_standard_sample_rate = 384000;
+pub const ma_standard_sample_rate_min: ma_standard_sample_rate = 8000;
+pub const ma_standard_sample_rate_max: ma_standard_sample_rate = 384000;
+pub const ma_standard_sample_rate_count: ma_standard_sample_rate = 14;
+pub type ma_standard_sample_rate = ::std::os::raw::c_uint;
 pub const ma_channel_mix_mode_rectangular: ma_channel_mix_mode = 0;
 pub const ma_channel_mix_mode_simple: ma_channel_mix_mode = 1;
 pub const ma_channel_mix_mode_custom_weights: ma_channel_mix_mode = 2;
@@ -664,7 +666,7 @@ pub const ma_thread_priority_highest: ma_thread_priority = 0;
 pub const ma_thread_priority_realtime: ma_thread_priority = 1;
 pub const ma_thread_priority_default: ma_thread_priority = 0;
 pub type ma_thread_priority = ::std::os::raw::c_int;
-pub type ma_spinlock = ::std::os::raw::c_uchar;
+pub type ma_spinlock = ma_uint32;
 pub type ma_thread = pthread_t;
 pub type ma_mutex = pthread_mutex_t;
 #[repr(C)]
@@ -6408,11 +6410,11 @@ fn bindgen_test_layout_ma_duplex_rb() {
 }
 extern "C" {
     pub fn ma_duplex_rb_init(
-        inputSampleRate: ma_uint32,
         captureFormat: ma_format,
         captureChannels: ma_uint32,
-        captureSampleRate: ma_uint32,
-        capturePeriodSizeInFrames: ma_uint32,
+        sampleRate: ma_uint32,
+        captureInternalSampleRate: ma_uint32,
+        captureInternalPeriodSizeInFrames: ma_uint32,
         pAllocationCallbacks: *const ma_allocation_callbacks,
         pRB: *mut ma_duplex_rb,
     ) -> ma_result;
@@ -8733,14 +8735,16 @@ pub struct ma_backend_callbacks {
             pFramesWritten: *mut ma_uint32,
         ) -> ma_result,
     >,
-    pub onDeviceAudioThread:
+    pub onDeviceDataLoop:
+        ::std::option::Option<unsafe extern "C" fn(pDevice: *mut ma_device) -> ma_result>,
+    pub onDeviceDataLoopWakeup:
         ::std::option::Option<unsafe extern "C" fn(pDevice: *mut ma_device) -> ma_result>,
 }
 #[test]
 fn bindgen_test_layout_ma_backend_callbacks() {
     assert_eq!(
         ::std::mem::size_of::<ma_backend_callbacks>(),
-        88usize,
+        96usize,
         concat!("Size of: ", stringify!(ma_backend_callbacks))
     );
     assert_eq!(
@@ -8918,23 +8922,40 @@ fn bindgen_test_layout_ma_backend_callbacks() {
         );
     }
     test_field_onDeviceWrite();
-    fn test_field_onDeviceAudioThread() {
+    fn test_field_onDeviceDataLoop() {
         assert_eq!(
             unsafe {
                 let uninit = ::std::mem::MaybeUninit::<ma_backend_callbacks>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).onDeviceAudioThread) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).onDeviceDataLoop) as usize - ptr as usize
             },
             80usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_backend_callbacks),
                 "::",
-                stringify!(onDeviceAudioThread)
+                stringify!(onDeviceDataLoop)
             )
         );
     }
-    test_field_onDeviceAudioThread();
+    test_field_onDeviceDataLoop();
+    fn test_field_onDeviceDataLoopWakeup() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_backend_callbacks>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).onDeviceDataLoopWakeup) as usize - ptr as usize
+            },
+            88usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_backend_callbacks),
+                "::",
+                stringify!(onDeviceDataLoopWakeup)
+            )
+        );
+    }
+    test_field_onDeviceDataLoopWakeup();
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -9202,7 +9223,7 @@ fn bindgen_test_layout_ma_context_config__bindgen_ty_4() {
 fn bindgen_test_layout_ma_context_config() {
     assert_eq!(
         ::std::mem::size_of::<ma_context_config>(),
-        216usize,
+        224usize,
         concat!("Size of: ", stringify!(ma_context_config))
     );
     assert_eq!(
@@ -9383,6 +9404,380 @@ fn bindgen_test_layout_ma_context_config() {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct ma_context_command__wasapi {
+    pub code: ::std::os::raw::c_int,
+    pub pEvent: *mut ma_event,
+    pub data: ma_context_command__wasapi__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union ma_context_command__wasapi__bindgen_ty_1 {
+    pub quit: ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_1,
+    pub createAudioClient: ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2,
+    pub releaseAudioClient: ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_1 {
+    pub _unused: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_1() {
+    assert_eq!(
+        ::std::mem::size_of::<ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_1>(),
+        4usize,
+        concat!(
+            "Size of: ",
+            stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_1)
+        )
+    );
+    assert_eq!(
+        ::std::mem::align_of::<ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_1>(),
+        4usize,
+        concat!(
+            "Alignment of ",
+            stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_1)
+        )
+    );
+    fn test_field__unused() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<
+                    ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_1,
+                >::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr)._unused) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_1),
+                "::",
+                stringify!(_unused)
+            )
+        );
+    }
+    test_field__unused();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2 {
+    pub deviceType: ma_device_type,
+    pub pAudioClient: *mut ::std::os::raw::c_void,
+    pub ppAudioClientService: *mut *mut ::std::os::raw::c_void,
+    pub result: ma_result,
+}
+#[test]
+fn bindgen_test_layout_ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2() {
+    assert_eq!(
+        ::std::mem::size_of::<ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2>(),
+        32usize,
+        concat!(
+            "Size of: ",
+            stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2)
+        )
+    );
+    assert_eq!(
+        ::std::mem::align_of::<ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2>(),
+        8usize,
+        concat!(
+            "Alignment of ",
+            stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2)
+        )
+    );
+    fn test_field_deviceType() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<
+                    ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2,
+                >::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).deviceType) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2),
+                "::",
+                stringify!(deviceType)
+            )
+        );
+    }
+    test_field_deviceType();
+    fn test_field_pAudioClient() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<
+                    ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2,
+                >::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).pAudioClient) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2),
+                "::",
+                stringify!(pAudioClient)
+            )
+        );
+    }
+    test_field_pAudioClient();
+    fn test_field_ppAudioClientService() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<
+                    ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2,
+                >::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).ppAudioClientService) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2),
+                "::",
+                stringify!(ppAudioClientService)
+            )
+        );
+    }
+    test_field_ppAudioClientService();
+    fn test_field_result() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<
+                    ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2,
+                >::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).result) as usize - ptr as usize
+            },
+            24usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_2),
+                "::",
+                stringify!(result)
+            )
+        );
+    }
+    test_field_result();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3 {
+    pub pDevice: *mut ma_device,
+    pub deviceType: ma_device_type,
+}
+#[test]
+fn bindgen_test_layout_ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3() {
+    assert_eq!(
+        ::std::mem::size_of::<ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3>(),
+        16usize,
+        concat!(
+            "Size of: ",
+            stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3)
+        )
+    );
+    assert_eq!(
+        ::std::mem::align_of::<ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3>(),
+        8usize,
+        concat!(
+            "Alignment of ",
+            stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3)
+        )
+    );
+    fn test_field_pDevice() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<
+                    ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3,
+                >::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).pDevice) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3),
+                "::",
+                stringify!(pDevice)
+            )
+        );
+    }
+    test_field_pDevice();
+    fn test_field_deviceType() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<
+                    ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3,
+                >::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).deviceType) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1__bindgen_ty_3),
+                "::",
+                stringify!(deviceType)
+            )
+        );
+    }
+    test_field_deviceType();
+}
+#[test]
+fn bindgen_test_layout_ma_context_command__wasapi__bindgen_ty_1() {
+    assert_eq!(
+        ::std::mem::size_of::<ma_context_command__wasapi__bindgen_ty_1>(),
+        32usize,
+        concat!(
+            "Size of: ",
+            stringify!(ma_context_command__wasapi__bindgen_ty_1)
+        )
+    );
+    assert_eq!(
+        ::std::mem::align_of::<ma_context_command__wasapi__bindgen_ty_1>(),
+        8usize,
+        concat!(
+            "Alignment of ",
+            stringify!(ma_context_command__wasapi__bindgen_ty_1)
+        )
+    );
+    fn test_field_quit() {
+        assert_eq!(
+            unsafe {
+                let uninit =
+                    ::std::mem::MaybeUninit::<ma_context_command__wasapi__bindgen_ty_1>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).quit) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1),
+                "::",
+                stringify!(quit)
+            )
+        );
+    }
+    test_field_quit();
+    fn test_field_createAudioClient() {
+        assert_eq!(
+            unsafe {
+                let uninit =
+                    ::std::mem::MaybeUninit::<ma_context_command__wasapi__bindgen_ty_1>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).createAudioClient) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1),
+                "::",
+                stringify!(createAudioClient)
+            )
+        );
+    }
+    test_field_createAudioClient();
+    fn test_field_releaseAudioClient() {
+        assert_eq!(
+            unsafe {
+                let uninit =
+                    ::std::mem::MaybeUninit::<ma_context_command__wasapi__bindgen_ty_1>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).releaseAudioClient) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi__bindgen_ty_1),
+                "::",
+                stringify!(releaseAudioClient)
+            )
+        );
+    }
+    test_field_releaseAudioClient();
+}
+impl ::std::fmt::Debug for ma_context_command__wasapi__bindgen_ty_1 {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        write!(f, "ma_context_command__wasapi__bindgen_ty_1 {{ union }}")
+    }
+}
+#[test]
+fn bindgen_test_layout_ma_context_command__wasapi() {
+    assert_eq!(
+        ::std::mem::size_of::<ma_context_command__wasapi>(),
+        48usize,
+        concat!("Size of: ", stringify!(ma_context_command__wasapi))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<ma_context_command__wasapi>(),
+        8usize,
+        concat!("Alignment of ", stringify!(ma_context_command__wasapi))
+    );
+    fn test_field_code() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_context_command__wasapi>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).code) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi),
+                "::",
+                stringify!(code)
+            )
+        );
+    }
+    test_field_code();
+    fn test_field_pEvent() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_context_command__wasapi>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).pEvent) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi),
+                "::",
+                stringify!(pEvent)
+            )
+        );
+    }
+    test_field_pEvent();
+    fn test_field_data() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_context_command__wasapi>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).data) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_context_command__wasapi),
+                "::",
+                stringify!(data)
+            )
+        );
+    }
+    test_field_data();
+}
+impl ::std::fmt::Debug for ma_context_command__wasapi {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        write!(
+            f,
+            "ma_context_command__wasapi {{ code: {:?}, pEvent: {:?}, data: {:?} }}",
+            self.code, self.pEvent, self.data
+        )
+    }
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct ma_context {
     pub callbacks: ma_backend_callbacks,
     pub backend: ma_backend,
@@ -9397,39 +9792,6 @@ pub struct ma_context {
     pub playbackDeviceInfoCount: ma_uint32,
     pub captureDeviceInfoCount: ma_uint32,
     pub pDeviceInfos: *mut ma_device_info,
-    pub isBackendAsynchronous: ma_bool8,
-    pub onUninit:
-        ::std::option::Option<unsafe extern "C" fn(pContext: *mut ma_context) -> ma_result>,
-    pub onEnumDevices: ::std::option::Option<
-        unsafe extern "C" fn(
-            pContext: *mut ma_context,
-            callback: ma_enum_devices_callback_proc,
-            pUserData: *mut ::std::os::raw::c_void,
-        ) -> ma_result,
-    >,
-    pub onGetDeviceInfo: ::std::option::Option<
-        unsafe extern "C" fn(
-            pContext: *mut ma_context,
-            deviceType: ma_device_type,
-            pDeviceID: *const ma_device_id,
-            shareMode: ma_share_mode,
-            pDeviceInfo: *mut ma_device_info,
-        ) -> ma_result,
-    >,
-    pub onDeviceInit: ::std::option::Option<
-        unsafe extern "C" fn(
-            pContext: *mut ma_context,
-            pConfig: *const ma_device_config,
-            pDevice: *mut ma_device,
-        ) -> ma_result,
-    >,
-    pub onDeviceUninit: ::std::option::Option<unsafe extern "C" fn(pDevice: *mut ma_device)>,
-    pub onDeviceStart:
-        ::std::option::Option<unsafe extern "C" fn(pDevice: *mut ma_device) -> ma_result>,
-    pub onDeviceStop:
-        ::std::option::Option<unsafe extern "C" fn(pDevice: *mut ma_device) -> ma_result>,
-    pub onDeviceMainLoop:
-        ::std::option::Option<unsafe extern "C" fn(pDevice: *mut ma_device) -> ma_result>,
     pub __bindgen_anon_1: ma_context__bindgen_ty_1,
     pub __bindgen_anon_2: ma_context__bindgen_ty_2,
 }
@@ -10383,7 +10745,7 @@ impl ::std::fmt::Debug for ma_context__bindgen_ty_2 {
 fn bindgen_test_layout_ma_context() {
     assert_eq!(
         ::std::mem::size_of::<ma_context>(),
-        696usize,
+        632usize,
         concat!("Size of: ", stringify!(ma_context))
     );
     assert_eq!(
@@ -10415,7 +10777,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).backend) as usize - ptr as usize
             },
-            88usize,
+            96usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10432,7 +10794,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).logCallback) as usize - ptr as usize
             },
-            96usize,
+            104usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10449,7 +10811,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).threadPriority) as usize - ptr as usize
             },
-            104usize,
+            112usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10466,7 +10828,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).threadStackSize) as usize - ptr as usize
             },
-            112usize,
+            120usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10483,7 +10845,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).pUserData) as usize - ptr as usize
             },
-            120usize,
+            128usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10500,7 +10862,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).allocationCallbacks) as usize - ptr as usize
             },
-            128usize,
+            136usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10517,7 +10879,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).deviceEnumLock) as usize - ptr as usize
             },
-            160usize,
+            168usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10534,7 +10896,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).deviceInfoLock) as usize - ptr as usize
             },
-            224usize,
+            232usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10551,7 +10913,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).deviceInfoCapacity) as usize - ptr as usize
             },
-            288usize,
+            296usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10568,7 +10930,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).playbackDeviceInfoCount) as usize - ptr as usize
             },
-            292usize,
+            300usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10585,7 +10947,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).captureDeviceInfoCount) as usize - ptr as usize
             },
-            296usize,
+            304usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10602,7 +10964,7 @@ fn bindgen_test_layout_ma_context() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).pDeviceInfos) as usize - ptr as usize
             },
-            304usize,
+            312usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_context),
@@ -10612,163 +10974,10 @@ fn bindgen_test_layout_ma_context() {
         );
     }
     test_field_pDeviceInfos();
-    fn test_field_isBackendAsynchronous() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_context>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).isBackendAsynchronous) as usize - ptr as usize
-            },
-            312usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_context),
-                "::",
-                stringify!(isBackendAsynchronous)
-            )
-        );
-    }
-    test_field_isBackendAsynchronous();
-    fn test_field_onUninit() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_context>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).onUninit) as usize - ptr as usize
-            },
-            320usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_context),
-                "::",
-                stringify!(onUninit)
-            )
-        );
-    }
-    test_field_onUninit();
-    fn test_field_onEnumDevices() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_context>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).onEnumDevices) as usize - ptr as usize
-            },
-            328usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_context),
-                "::",
-                stringify!(onEnumDevices)
-            )
-        );
-    }
-    test_field_onEnumDevices();
-    fn test_field_onGetDeviceInfo() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_context>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).onGetDeviceInfo) as usize - ptr as usize
-            },
-            336usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_context),
-                "::",
-                stringify!(onGetDeviceInfo)
-            )
-        );
-    }
-    test_field_onGetDeviceInfo();
-    fn test_field_onDeviceInit() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_context>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).onDeviceInit) as usize - ptr as usize
-            },
-            344usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_context),
-                "::",
-                stringify!(onDeviceInit)
-            )
-        );
-    }
-    test_field_onDeviceInit();
-    fn test_field_onDeviceUninit() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_context>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).onDeviceUninit) as usize - ptr as usize
-            },
-            352usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_context),
-                "::",
-                stringify!(onDeviceUninit)
-            )
-        );
-    }
-    test_field_onDeviceUninit();
-    fn test_field_onDeviceStart() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_context>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).onDeviceStart) as usize - ptr as usize
-            },
-            360usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_context),
-                "::",
-                stringify!(onDeviceStart)
-            )
-        );
-    }
-    test_field_onDeviceStart();
-    fn test_field_onDeviceStop() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_context>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).onDeviceStop) as usize - ptr as usize
-            },
-            368usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_context),
-                "::",
-                stringify!(onDeviceStop)
-            )
-        );
-    }
-    test_field_onDeviceStop();
-    fn test_field_onDeviceMainLoop() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_context>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).onDeviceMainLoop) as usize - ptr as usize
-            },
-            376usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_context),
-                "::",
-                stringify!(onDeviceMainLoop)
-            )
-        );
-    }
-    test_field_onDeviceMainLoop();
 }
 impl ::std::fmt::Debug for ma_context {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        write ! (f , "ma_context {{ callbacks: {:?}, backend: {:?}, logCallback: {:?}, threadPriority: {:?}, threadStackSize: {:?}, pUserData: {:?}, allocationCallbacks: {:?}, deviceEnumLock: {:?}, deviceInfoLock: {:?}, deviceInfoCapacity: {:?}, playbackDeviceInfoCount: {:?}, captureDeviceInfoCount: {:?}, pDeviceInfos: {:?}, isBackendAsynchronous: {:?}, onUninit: {:?}, onEnumDevices: {:?}, onGetDeviceInfo: {:?}, onDeviceInit: {:?}, onDeviceUninit: {:?}, onDeviceStart: {:?}, onDeviceStop: {:?}, onDeviceMainLoop: {:?}, __bindgen_anon_1: {:?}, __bindgen_anon_2: {:?} }}" , self . callbacks , self . backend , self . logCallback , self . threadPriority , self . threadStackSize , self . pUserData , self . allocationCallbacks , self . deviceEnumLock , self . deviceInfoLock , self . deviceInfoCapacity , self . playbackDeviceInfoCount , self . captureDeviceInfoCount , self . pDeviceInfos , self . isBackendAsynchronous , self . onUninit , self . onEnumDevices , self . onGetDeviceInfo , self . onDeviceInit , self . onDeviceUninit , self . onDeviceStart , self . onDeviceStop , self . onDeviceMainLoop , self . __bindgen_anon_1 , self . __bindgen_anon_2)
+        write ! (f , "ma_context {{ callbacks: {:?}, backend: {:?}, logCallback: {:?}, threadPriority: {:?}, threadStackSize: {:?}, pUserData: {:?}, allocationCallbacks: {:?}, deviceEnumLock: {:?}, deviceInfoLock: {:?}, deviceInfoCapacity: {:?}, playbackDeviceInfoCount: {:?}, captureDeviceInfoCount: {:?}, pDeviceInfos: {:?}, __bindgen_anon_1: {:?}, __bindgen_anon_2: {:?} }}" , self . callbacks , self . backend , self . logCallback , self . threadPriority , self . threadStackSize , self . pUserData , self . allocationCallbacks , self . deviceEnumLock , self . deviceInfoLock , self . deviceInfoCapacity , self . playbackDeviceInfoCount , self . captureDeviceInfoCount , self . pDeviceInfos , self . __bindgen_anon_1 , self . __bindgen_anon_2)
     }
 }
 #[repr(C)]
@@ -10781,15 +10990,12 @@ pub struct ma_device {
     pub onData: ma_device_callback_proc,
     pub onStop: ma_stop_proc,
     pub pUserData: *mut ::std::os::raw::c_void,
-    pub lock: ma_mutex,
+    pub startStopLock: ma_mutex,
     pub wakeupEvent: ma_event,
     pub startEvent: ma_event,
     pub stopEvent: ma_event,
     pub thread: ma_thread,
     pub workResult: ma_result,
-    pub usingDefaultSampleRate: ma_bool8,
-    pub usingDefaultBufferSize: ma_bool8,
-    pub usingDefaultPeriods: ma_bool8,
     pub isOwnerOfContext: ma_bool8,
     pub noPreZeroedOutputBuffer: ma_bool8,
     pub noClip: ma_bool8,
@@ -10972,15 +11178,12 @@ pub struct ma_device__bindgen_ty_2 {
     pub internalPeriods: ma_uint32,
     pub channelMixMode: ma_channel_mix_mode,
     pub converter: ma_data_converter,
-    pub usingDefaultFormat: ma_bool8,
-    pub usingDefaultChannels: ma_bool8,
-    pub usingDefaultChannelMap: ma_bool8,
 }
 #[test]
 fn bindgen_test_layout_ma_device__bindgen_ty_2() {
     assert_eq!(
         ::std::mem::size_of::<ma_device__bindgen_ty_2>(),
-        10720usize,
+        10712usize,
         concat!("Size of: ", stringify!(ma_device__bindgen_ty_2))
     );
     assert_eq!(
@@ -11226,61 +11429,10 @@ fn bindgen_test_layout_ma_device__bindgen_ty_2() {
         );
     }
     test_field_converter();
-    fn test_field_usingDefaultFormat() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_device__bindgen_ty_2>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).usingDefaultFormat) as usize - ptr as usize
-            },
-            10712usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device__bindgen_ty_2),
-                "::",
-                stringify!(usingDefaultFormat)
-            )
-        );
-    }
-    test_field_usingDefaultFormat();
-    fn test_field_usingDefaultChannels() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_device__bindgen_ty_2>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).usingDefaultChannels) as usize - ptr as usize
-            },
-            10713usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device__bindgen_ty_2),
-                "::",
-                stringify!(usingDefaultChannels)
-            )
-        );
-    }
-    test_field_usingDefaultChannels();
-    fn test_field_usingDefaultChannelMap() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_device__bindgen_ty_2>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).usingDefaultChannelMap) as usize - ptr as usize
-            },
-            10714usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device__bindgen_ty_2),
-                "::",
-                stringify!(usingDefaultChannelMap)
-            )
-        );
-    }
-    test_field_usingDefaultChannelMap();
 }
 impl ::std::fmt::Debug for ma_device__bindgen_ty_2 {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        write ! (f , "ma_device__bindgen_ty_2 {{ id: {:?}, name: [{}], shareMode: {:?}, format: {:?}, channels: {:?}, channelMap: [{}], internalFormat: {:?}, internalChannels: {:?}, internalSampleRate: {:?}, internalChannelMap: [{}], internalPeriodSizeInFrames: {:?}, internalPeriods: {:?}, channelMixMode: {:?}, converter: {:?}, usingDefaultFormat: {:?}, usingDefaultChannels: {:?}, usingDefaultChannelMap: {:?} }}" , self . id , self . name . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . shareMode , self . format , self . channels , self . channelMap . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . internalFormat , self . internalChannels , self . internalSampleRate , self . internalChannelMap . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . internalPeriodSizeInFrames , self . internalPeriods , self . channelMixMode , self . converter , self . usingDefaultFormat , self . usingDefaultChannels , self . usingDefaultChannelMap)
+        write ! (f , "ma_device__bindgen_ty_2 {{ id: {:?}, name: [{}], shareMode: {:?}, format: {:?}, channels: {:?}, channelMap: [{}], internalFormat: {:?}, internalChannels: {:?}, internalSampleRate: {:?}, internalChannelMap: [{}], internalPeriodSizeInFrames: {:?}, internalPeriods: {:?}, channelMixMode: {:?}, converter: {:?} }}" , self . id , self . name . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . shareMode , self . format , self . channels , self . channelMap . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . internalFormat , self . internalChannels , self . internalSampleRate , self . internalChannelMap . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . internalPeriodSizeInFrames , self . internalPeriods , self . channelMixMode , self . converter)
     }
 }
 #[repr(C)]
@@ -11300,15 +11452,12 @@ pub struct ma_device__bindgen_ty_3 {
     pub internalPeriods: ma_uint32,
     pub channelMixMode: ma_channel_mix_mode,
     pub converter: ma_data_converter,
-    pub usingDefaultFormat: ma_bool8,
-    pub usingDefaultChannels: ma_bool8,
-    pub usingDefaultChannelMap: ma_bool8,
 }
 #[test]
 fn bindgen_test_layout_ma_device__bindgen_ty_3() {
     assert_eq!(
         ::std::mem::size_of::<ma_device__bindgen_ty_3>(),
-        10720usize,
+        10712usize,
         concat!("Size of: ", stringify!(ma_device__bindgen_ty_3))
     );
     assert_eq!(
@@ -11554,61 +11703,10 @@ fn bindgen_test_layout_ma_device__bindgen_ty_3() {
         );
     }
     test_field_converter();
-    fn test_field_usingDefaultFormat() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_device__bindgen_ty_3>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).usingDefaultFormat) as usize - ptr as usize
-            },
-            10712usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device__bindgen_ty_3),
-                "::",
-                stringify!(usingDefaultFormat)
-            )
-        );
-    }
-    test_field_usingDefaultFormat();
-    fn test_field_usingDefaultChannels() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_device__bindgen_ty_3>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).usingDefaultChannels) as usize - ptr as usize
-            },
-            10713usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device__bindgen_ty_3),
-                "::",
-                stringify!(usingDefaultChannels)
-            )
-        );
-    }
-    test_field_usingDefaultChannels();
-    fn test_field_usingDefaultChannelMap() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_device__bindgen_ty_3>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).usingDefaultChannelMap) as usize - ptr as usize
-            },
-            10714usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device__bindgen_ty_3),
-                "::",
-                stringify!(usingDefaultChannelMap)
-            )
-        );
-    }
-    test_field_usingDefaultChannelMap();
 }
 impl ::std::fmt::Debug for ma_device__bindgen_ty_3 {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        write ! (f , "ma_device__bindgen_ty_3 {{ id: {:?}, name: [{}], shareMode: {:?}, format: {:?}, channels: {:?}, channelMap: [{}], internalFormat: {:?}, internalChannels: {:?}, internalSampleRate: {:?}, internalChannelMap: [{}], internalPeriodSizeInFrames: {:?}, internalPeriods: {:?}, channelMixMode: {:?}, converter: {:?}, usingDefaultFormat: {:?}, usingDefaultChannels: {:?}, usingDefaultChannelMap: {:?} }}" , self . id , self . name . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . shareMode , self . format , self . channels , self . channelMap . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . internalFormat , self . internalChannels , self . internalSampleRate , self . internalChannelMap . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . internalPeriodSizeInFrames , self . internalPeriods , self . channelMixMode , self . converter , self . usingDefaultFormat , self . usingDefaultChannels , self . usingDefaultChannelMap)
+        write ! (f , "ma_device__bindgen_ty_3 {{ id: {:?}, name: [{}], shareMode: {:?}, format: {:?}, channels: {:?}, channelMap: [{}], internalFormat: {:?}, internalChannels: {:?}, internalSampleRate: {:?}, internalChannelMap: [{}], internalPeriodSizeInFrames: {:?}, internalPeriods: {:?}, channelMixMode: {:?}, converter: {:?} }}" , self . id , self . name . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . shareMode , self . format , self . channels , self . channelMap . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . internalFormat , self . internalChannels , self . internalSampleRate , self . internalChannelMap . iter () . enumerate () . map (| (i , v) | format ! ("{}{:?}" , if i > 0 { ", " } else { "" } , v)) . collect :: < String > () , self . internalPeriodSizeInFrames , self . internalPeriods , self . channelMixMode , self . converter)
     }
 }
 #[repr(C)]
@@ -11630,18 +11728,18 @@ pub struct ma_device__bindgen_ty_4__bindgen_ty_1 {
     pub originalPeriodSizeInFrames: ma_uint32,
     pub originalPeriodSizeInMilliseconds: ma_uint32,
     pub originalPeriods: ma_uint32,
+    pub originalPerformanceProfile: ma_performance_profile,
     pub isDefaultPlaybackDevice: ma_bool32,
     pub isDefaultCaptureDevice: ma_bool32,
     pub isSwitchingPlaybackDevice: ma_bool32,
     pub isSwitchingCaptureDevice: ma_bool32,
-    pub duplexRB: ma_pcm_rb,
     pub pRouteChangeHandler: *mut ::std::os::raw::c_void,
 }
 #[test]
 fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_1() {
     assert_eq!(
         ::std::mem::size_of::<ma_device__bindgen_ty_4__bindgen_ty_1>(),
-        272usize,
+        200usize,
         concat!(
             "Size of: ",
             stringify!(ma_device__bindgen_ty_4__bindgen_ty_1)
@@ -11836,6 +11934,24 @@ fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_1() {
         );
     }
     test_field_originalPeriods();
+    fn test_field_originalPerformanceProfile() {
+        assert_eq!(
+            unsafe {
+                let uninit =
+                    ::std::mem::MaybeUninit::<ma_device__bindgen_ty_4__bindgen_ty_1>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).originalPerformanceProfile) as usize - ptr as usize
+            },
+            172usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_device__bindgen_ty_4__bindgen_ty_1),
+                "::",
+                stringify!(originalPerformanceProfile)
+            )
+        );
+    }
+    test_field_originalPerformanceProfile();
     fn test_field_isDefaultPlaybackDevice() {
         assert_eq!(
             unsafe {
@@ -11844,7 +11960,7 @@ fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_1() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).isDefaultPlaybackDevice) as usize - ptr as usize
             },
-            172usize,
+            176usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device__bindgen_ty_4__bindgen_ty_1),
@@ -11862,7 +11978,7 @@ fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_1() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).isDefaultCaptureDevice) as usize - ptr as usize
             },
-            176usize,
+            180usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device__bindgen_ty_4__bindgen_ty_1),
@@ -11880,7 +11996,7 @@ fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_1() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).isSwitchingPlaybackDevice) as usize - ptr as usize
             },
-            180usize,
+            184usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device__bindgen_ty_4__bindgen_ty_1),
@@ -11898,7 +12014,7 @@ fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_1() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).isSwitchingCaptureDevice) as usize - ptr as usize
             },
-            184usize,
+            188usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device__bindgen_ty_4__bindgen_ty_1),
@@ -11908,24 +12024,6 @@ fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_1() {
         );
     }
     test_field_isSwitchingCaptureDevice();
-    fn test_field_duplexRB() {
-        assert_eq!(
-            unsafe {
-                let uninit =
-                    ::std::mem::MaybeUninit::<ma_device__bindgen_ty_4__bindgen_ty_1>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).duplexRB) as usize - ptr as usize
-            },
-            192usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device__bindgen_ty_4__bindgen_ty_1),
-                "::",
-                stringify!(duplexRB)
-            )
-        );
-    }
-    test_field_duplexRB();
     fn test_field_pRouteChangeHandler() {
         assert_eq!(
             unsafe {
@@ -11934,7 +12032,7 @@ fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_1() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).pRouteChangeHandler) as usize - ptr as usize
             },
-            264usize,
+            192usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device__bindgen_ty_4__bindgen_ty_1),
@@ -11947,7 +12045,7 @@ fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_1() {
 }
 impl ::std::fmt::Debug for ma_device__bindgen_ty_4__bindgen_ty_1 {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        write ! (f , "ma_device__bindgen_ty_4__bindgen_ty_1 {{ deviceObjectIDPlayback: {:?}, deviceObjectIDCapture: {:?}, audioUnitPlayback: {:?}, audioUnitCapture: {:?}, pAudioBufferList: {:?}, audioBufferCapInFrames: {:?}, stopEvent: {:?}, originalPeriodSizeInFrames: {:?}, originalPeriodSizeInMilliseconds: {:?}, originalPeriods: {:?}, isDefaultPlaybackDevice: {:?}, isDefaultCaptureDevice: {:?}, isSwitchingPlaybackDevice: {:?}, isSwitchingCaptureDevice: {:?}, duplexRB: {:?}, pRouteChangeHandler: {:?} }}" , self . deviceObjectIDPlayback , self . deviceObjectIDCapture , self . audioUnitPlayback , self . audioUnitCapture , self . pAudioBufferList , self . audioBufferCapInFrames , self . stopEvent , self . originalPeriodSizeInFrames , self . originalPeriodSizeInMilliseconds , self . originalPeriods , self . isDefaultPlaybackDevice , self . isDefaultCaptureDevice , self . isSwitchingPlaybackDevice , self . isSwitchingCaptureDevice , self . duplexRB , self . pRouteChangeHandler)
+        write ! (f , "ma_device__bindgen_ty_4__bindgen_ty_1 {{ deviceObjectIDPlayback: {:?}, deviceObjectIDCapture: {:?}, audioUnitPlayback: {:?}, audioUnitCapture: {:?}, pAudioBufferList: {:?}, audioBufferCapInFrames: {:?}, stopEvent: {:?}, originalPeriodSizeInFrames: {:?}, originalPeriodSizeInMilliseconds: {:?}, originalPeriods: {:?}, originalPerformanceProfile: {:?}, isDefaultPlaybackDevice: {:?}, isDefaultCaptureDevice: {:?}, isSwitchingPlaybackDevice: {:?}, isSwitchingCaptureDevice: {:?}, pRouteChangeHandler: {:?} }}" , self . deviceObjectIDPlayback , self . deviceObjectIDCapture , self . audioUnitPlayback , self . audioUnitCapture , self . pAudioBufferList , self . audioBufferCapInFrames , self . stopEvent , self . originalPeriodSizeInFrames , self . originalPeriodSizeInMilliseconds , self . originalPeriods , self . originalPerformanceProfile , self . isDefaultPlaybackDevice , self . isDefaultCaptureDevice , self . isSwitchingPlaybackDevice , self . isSwitchingCaptureDevice , self . pRouteChangeHandler)
     }
 }
 #[repr(C)]
@@ -11965,7 +12063,7 @@ pub struct ma_device__bindgen_ty_4__bindgen_ty_2 {
     pub currentPeriodFramesRemainingCapture: ma_uint32,
     pub lastProcessedFramePlayback: ma_uint64,
     pub lastProcessedFrameCapture: ma_uint64,
-    pub isStarted: ma_bool8,
+    pub isStarted: ma_bool32,
 }
 #[test]
 fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_2() {
@@ -12283,7 +12381,7 @@ impl ::std::fmt::Debug for ma_device__bindgen_ty_4 {
 fn bindgen_test_layout_ma_device() {
     assert_eq!(
         ::std::mem::size_of::<ma_device>(),
-        22448usize,
+        22432usize,
         concat!("Size of: ", stringify!(ma_device))
     );
     assert_eq!(
@@ -12410,23 +12508,23 @@ fn bindgen_test_layout_ma_device() {
         );
     }
     test_field_pUserData();
-    fn test_field_lock() {
+    fn test_field_startStopLock() {
         assert_eq!(
             unsafe {
                 let uninit = ::std::mem::MaybeUninit::<ma_device>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).lock) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).startStopLock) as usize - ptr as usize
             },
             48usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device),
                 "::",
-                stringify!(lock)
+                stringify!(startStopLock)
             )
         );
     }
-    test_field_lock();
+    test_field_startStopLock();
     fn test_field_wakeupEvent() {
         assert_eq!(
             unsafe {
@@ -12512,57 +12610,6 @@ fn bindgen_test_layout_ma_device() {
         );
     }
     test_field_workResult();
-    fn test_field_usingDefaultSampleRate() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_device>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).usingDefaultSampleRate) as usize - ptr as usize
-            },
-            484usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device),
-                "::",
-                stringify!(usingDefaultSampleRate)
-            )
-        );
-    }
-    test_field_usingDefaultSampleRate();
-    fn test_field_usingDefaultBufferSize() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_device>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).usingDefaultBufferSize) as usize - ptr as usize
-            },
-            485usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device),
-                "::",
-                stringify!(usingDefaultBufferSize)
-            )
-        );
-    }
-    test_field_usingDefaultBufferSize();
-    fn test_field_usingDefaultPeriods() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_device>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).usingDefaultPeriods) as usize - ptr as usize
-            },
-            486usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_device),
-                "::",
-                stringify!(usingDefaultPeriods)
-            )
-        );
-    }
-    test_field_usingDefaultPeriods();
     fn test_field_isOwnerOfContext() {
         assert_eq!(
             unsafe {
@@ -12570,7 +12617,7 @@ fn bindgen_test_layout_ma_device() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).isOwnerOfContext) as usize - ptr as usize
             },
-            487usize,
+            484usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device),
@@ -12587,7 +12634,7 @@ fn bindgen_test_layout_ma_device() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).noPreZeroedOutputBuffer) as usize - ptr as usize
             },
-            488usize,
+            485usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device),
@@ -12604,7 +12651,7 @@ fn bindgen_test_layout_ma_device() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).noClip) as usize - ptr as usize
             },
-            489usize,
+            486usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device),
@@ -12621,7 +12668,7 @@ fn bindgen_test_layout_ma_device() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).masterVolumeFactor) as usize - ptr as usize
             },
-            492usize,
+            488usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device),
@@ -12689,7 +12736,7 @@ fn bindgen_test_layout_ma_device() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).capture) as usize - ptr as usize
             },
-            11304usize,
+            11296usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_device),
@@ -12702,7 +12749,7 @@ fn bindgen_test_layout_ma_device() {
 }
 impl ::std::fmt::Debug for ma_device {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        write ! (f , "ma_device {{ pContext: {:?}, type: {:?}, sampleRate: {:?}, state: {:?}, onData: {:?}, onStop: {:?}, pUserData: {:?}, lock: {:?}, wakeupEvent: {:?}, startEvent: {:?}, stopEvent: {:?}, thread: {:?}, workResult: {:?}, usingDefaultSampleRate: {:?}, usingDefaultBufferSize: {:?}, usingDefaultPeriods: {:?}, isOwnerOfContext: {:?}, noPreZeroedOutputBuffer: {:?}, noClip: {:?}, masterVolumeFactor: {:?}, duplexRB: {:?}, resampling: {:?}, playback: {:?}, capture: {:?}, __bindgen_anon_1: {:?} }}" , self . pContext , self . type_ , self . sampleRate , self . state , self . onData , self . onStop , self . pUserData , self . lock , self . wakeupEvent , self . startEvent , self . stopEvent , self . thread , self . workResult , self . usingDefaultSampleRate , self . usingDefaultBufferSize , self . usingDefaultPeriods , self . isOwnerOfContext , self . noPreZeroedOutputBuffer , self . noClip , self . masterVolumeFactor , self . duplexRB , self . resampling , self . playback , self . capture , self . __bindgen_anon_1)
+        write ! (f , "ma_device {{ pContext: {:?}, type: {:?}, sampleRate: {:?}, state: {:?}, onData: {:?}, onStop: {:?}, pUserData: {:?}, startStopLock: {:?}, wakeupEvent: {:?}, startEvent: {:?}, stopEvent: {:?}, thread: {:?}, workResult: {:?}, isOwnerOfContext: {:?}, noPreZeroedOutputBuffer: {:?}, noClip: {:?}, masterVolumeFactor: {:?}, duplexRB: {:?}, resampling: {:?}, playback: {:?}, capture: {:?}, __bindgen_anon_1: {:?} }}" , self . pContext , self . type_ , self . sampleRate , self . state , self . onData , self . onStop , self . pUserData , self . startStopLock , self . wakeupEvent , self . startEvent , self . stopEvent , self . thread , self . workResult , self . isOwnerOfContext , self . noPreZeroedOutputBuffer , self . noClip , self . masterVolumeFactor , self . duplexRB , self . resampling , self . playback , self . capture , self . __bindgen_anon_1)
     }
 }
 extern "C" {
@@ -12803,6 +12850,13 @@ extern "C" {
         pInput: *const ::std::os::raw::c_void,
         frameCount: ma_uint32,
     ) -> ma_result;
+}
+extern "C" {
+    pub fn ma_calculate_buffer_size_in_frames_from_descriptor(
+        pDescriptor: *const ma_device_descriptor,
+        nativeSampleRate: ma_uint32,
+        performanceProfile: ma_performance_profile,
+    ) -> ma_uint32;
 }
 extern "C" {
     pub fn ma_get_backend_name(backend: ma_backend) -> *const ::std::os::raw::c_char;

@@ -504,23 +504,23 @@ impl Default for PerformanceProfile {
 }
 
 // Standard Sample Rates:
-pub const SAMPLE_RATE_8000: u32 = sys::MA_SAMPLE_RATE_8000;
-pub const SAMPLE_RATE_11025: u32 = sys::MA_SAMPLE_RATE_11025;
-pub const SAMPLE_RATE_16000: u32 = sys::MA_SAMPLE_RATE_16000;
-pub const SAMPLE_RATE_22050: u32 = sys::MA_SAMPLE_RATE_22050;
-pub const SAMPLE_RATE_24000: u32 = sys::MA_SAMPLE_RATE_24000;
-pub const SAMPLE_RATE_32000: u32 = sys::MA_SAMPLE_RATE_32000;
-pub const SAMPLE_RATE_44100: u32 = sys::MA_SAMPLE_RATE_44100;
-pub const SAMPLE_RATE_48000: u32 = sys::MA_SAMPLE_RATE_48000;
-pub const SAMPLE_RATE_88200: u32 = sys::MA_SAMPLE_RATE_88200;
-pub const SAMPLE_RATE_96000: u32 = sys::MA_SAMPLE_RATE_96000;
-pub const SAMPLE_RATE_176400: u32 = sys::MA_SAMPLE_RATE_176400;
-pub const SAMPLE_RATE_192000: u32 = sys::MA_SAMPLE_RATE_192000;
-pub const SAMPLE_RATE_352800: u32 = sys::MA_SAMPLE_RATE_352800;
-pub const SAMPLE_RATE_384000: u32 = sys::MA_SAMPLE_RATE_384000;
+pub const SAMPLE_RATE_8000: u32 = sys::ma_standard_sample_rate_8000;
+pub const SAMPLE_RATE_11025: u32 = sys::ma_standard_sample_rate_11025;
+pub const SAMPLE_RATE_16000: u32 = sys::ma_standard_sample_rate_16000;
+pub const SAMPLE_RATE_22050: u32 = sys::ma_standard_sample_rate_22050;
+pub const SAMPLE_RATE_24000: u32 = sys::ma_standard_sample_rate_24000;
+pub const SAMPLE_RATE_32000: u32 = sys::ma_standard_sample_rate_32000;
+pub const SAMPLE_RATE_44100: u32 = sys::ma_standard_sample_rate_44100;
+pub const SAMPLE_RATE_48000: u32 = sys::ma_standard_sample_rate_48000;
+pub const SAMPLE_RATE_88200: u32 = sys::ma_standard_sample_rate_88200;
+pub const SAMPLE_RATE_96000: u32 = sys::ma_standard_sample_rate_96000;
+pub const SAMPLE_RATE_176400: u32 = sys::ma_standard_sample_rate_176400;
+pub const SAMPLE_RATE_192000: u32 = sys::ma_standard_sample_rate_192000;
+pub const SAMPLE_RATE_352800: u32 = sys::ma_standard_sample_rate_352800;
+pub const SAMPLE_RATE_384000: u32 = sys::ma_standard_sample_rate_384000;
 
-pub const MIN_SAMPLE_RATE: u32 = SAMPLE_RATE_8000;
-pub const MAX_SAMPLE_RATE: u32 = SAMPLE_RATE_384000;
+pub const MIN_SAMPLE_RATE: u32 = sys::ma_standard_sample_rate_min;
+pub const MAX_SAMPLE_RATE: u32 = sys::ma_standard_sample_rate_max;
 
 /// Minimum number of channels in a channel map.
 pub const MIN_CHANNELS: usize = sys::MA_MIN_CHANNELS as usize;

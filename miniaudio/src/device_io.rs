@@ -1019,10 +1019,6 @@ impl RawContext {
         }
     }
 
-    pub fn is_backend_asynchronous(&self) -> bool {
-        from_bool8(self.0.isBackendAsynchronous)
-    }
-
     /// Retrieves basic information about every active playback and capture device. This function
     /// will allocate memory internally for device lists.
     /// This function will not call the closure if an error occurred.
@@ -1535,18 +1531,6 @@ impl DeviceCapture {
         ShareMode::from_c(self.0.shareMode)
     }
 
-    pub fn using_default_format(&self) -> bool {
-        from_bool8(self.0.usingDefaultFormat)
-    }
-
-    pub fn using_default_channels(&self) -> bool {
-        from_bool8(self.0.usingDefaultChannels)
-    }
-
-    pub fn using_default_channel_map(&self) -> bool {
-        from_bool8(self.0.usingDefaultChannelMap)
-    }
-
     pub fn format(&self) -> Format {
         Format::from_c(self.0.format)
     }
@@ -1576,18 +1560,6 @@ impl DevicePlayback {
 
     pub fn share_mode(&self) -> ShareMode {
         ShareMode::from_c(self.0.shareMode)
-    }
-
-    pub fn using_default_format(&self) -> bool {
-        from_bool8(self.0.usingDefaultFormat)
-    }
-
-    pub fn using_default_channels(&self) -> bool {
-        from_bool8(self.0.usingDefaultChannels)
-    }
-
-    pub fn using_default_channel_map(&self) -> bool {
-        from_bool8(self.0.usingDefaultChannelMap)
     }
 
     pub fn format(&self) -> Format {
