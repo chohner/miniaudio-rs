@@ -2,7 +2,7 @@
 
 pub const MA_VERSION_MAJOR: u32 = 0;
 pub const MA_VERSION_MINOR: u32 = 10;
-pub const MA_VERSION_REVISION: u32 = 29;
+pub const MA_VERSION_REVISION: u32 = 31;
 pub const MA_TRUE: u32 = 1;
 pub const MA_FALSE: u32 = 0;
 pub const MA_SIZE_MAX: u32 = 4294967295;
@@ -128,6 +128,7 @@ pub const MA_NO_BACKEND: i32 = -103;
 pub const MA_NO_DEVICE: i32 = -104;
 pub const MA_API_NOT_FOUND: i32 = -105;
 pub const MA_INVALID_DEVICE_CONFIG: i32 = -106;
+pub const MA_LOOP: i32 = -107;
 pub const MA_DEVICE_NOT_INITIALIZED: i32 = -200;
 pub const MA_DEVICE_ALREADY_INITIALIZED: i32 = -201;
 pub const MA_DEVICE_NOT_STARTED: i32 = -202;
@@ -1263,7 +1264,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_biquad_get_latency(pBQ: *mut ma_biquad) -> ma_uint32;
+    pub fn ma_biquad_get_latency(pBQ: *const ma_biquad) -> ma_uint32;
 }
 #[doc = "Low-Pass Filtering"]
 #[repr(C)]
@@ -1512,7 +1513,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_lpf1_get_latency(pLPF: *mut ma_lpf1) -> ma_uint32;
+    pub fn ma_lpf1_get_latency(pLPF: *const ma_lpf1) -> ma_uint32;
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1569,7 +1570,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_lpf2_get_latency(pLPF: *mut ma_lpf2) -> ma_uint32;
+    pub fn ma_lpf2_get_latency(pLPF: *const ma_lpf2) -> ma_uint32;
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1850,7 +1851,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_lpf_get_latency(pLPF: *mut ma_lpf) -> ma_uint32;
+    pub fn ma_lpf_get_latency(pLPF: *const ma_lpf) -> ma_uint32;
 }
 #[doc = "High-Pass Filtering"]
 #[repr(C)]
@@ -2099,7 +2100,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_hpf1_get_latency(pHPF: *mut ma_hpf1) -> ma_uint32;
+    pub fn ma_hpf1_get_latency(pHPF: *const ma_hpf1) -> ma_uint32;
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -2156,7 +2157,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_hpf2_get_latency(pHPF: *mut ma_hpf2) -> ma_uint32;
+    pub fn ma_hpf2_get_latency(pHPF: *const ma_hpf2) -> ma_uint32;
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -2437,7 +2438,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_hpf_get_latency(pHPF: *mut ma_hpf) -> ma_uint32;
+    pub fn ma_hpf_get_latency(pHPF: *const ma_hpf) -> ma_uint32;
 }
 #[doc = "Band-Pass Filtering"]
 #[repr(C)]
@@ -2611,7 +2612,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_bpf2_get_latency(pBPF: *mut ma_bpf2) -> ma_uint32;
+    pub fn ma_bpf2_get_latency(pBPF: *const ma_bpf2) -> ma_uint32;
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -2842,7 +2843,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_bpf_get_latency(pBPF: *mut ma_bpf) -> ma_uint32;
+    pub fn ma_bpf_get_latency(pBPF: *const ma_bpf) -> ma_uint32;
 }
 #[doc = "Notching Filter"]
 #[repr(C)]
@@ -3017,7 +3018,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_notch2_get_latency(pFilter: *mut ma_notch2) -> ma_uint32;
+    pub fn ma_notch2_get_latency(pFilter: *const ma_notch2) -> ma_uint32;
 }
 #[doc = "Peaking EQ Filter"]
 #[repr(C)]
@@ -3210,7 +3211,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_peak2_get_latency(pFilter: *mut ma_peak2) -> ma_uint32;
+    pub fn ma_peak2_get_latency(pFilter: *const ma_peak2) -> ma_uint32;
 }
 #[doc = "Low Shelf Filter"]
 #[repr(C)]
@@ -3409,7 +3410,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_loshelf2_get_latency(pFilter: *mut ma_loshelf2) -> ma_uint32;
+    pub fn ma_loshelf2_get_latency(pFilter: *const ma_loshelf2) -> ma_uint32;
 }
 #[doc = "High Shelf Filter"]
 #[repr(C)]
@@ -3608,7 +3609,7 @@ extern "C" {
     ) -> ma_result;
 }
 extern "C" {
-    pub fn ma_hishelf2_get_latency(pFilter: *mut ma_hishelf2) -> ma_uint32;
+    pub fn ma_hishelf2_get_latency(pFilter: *const ma_hishelf2) -> ma_uint32;
 }
 #[doc = "Resampling"]
 #[repr(C)]
@@ -4065,23 +4066,24 @@ extern "C" {
 }
 extern "C" {
     pub fn ma_linear_resampler_get_required_input_frame_count(
-        pResampler: *mut ma_linear_resampler,
+        pResampler: *const ma_linear_resampler,
         outputFrameCount: ma_uint64,
     ) -> ma_uint64;
 }
 extern "C" {
     pub fn ma_linear_resampler_get_expected_output_frame_count(
-        pResampler: *mut ma_linear_resampler,
+        pResampler: *const ma_linear_resampler,
         inputFrameCount: ma_uint64,
     ) -> ma_uint64;
 }
 extern "C" {
-    pub fn ma_linear_resampler_get_input_latency(pResampler: *mut ma_linear_resampler)
-        -> ma_uint64;
+    pub fn ma_linear_resampler_get_input_latency(
+        pResampler: *const ma_linear_resampler,
+    ) -> ma_uint64;
 }
 extern "C" {
     pub fn ma_linear_resampler_get_output_latency(
-        pResampler: *mut ma_linear_resampler,
+        pResampler: *const ma_linear_resampler,
     ) -> ma_uint64;
 }
 pub const ma_resample_algorithm_linear: ma_resample_algorithm = 0;
@@ -4525,21 +4527,21 @@ extern "C" {
 }
 extern "C" {
     pub fn ma_resampler_get_required_input_frame_count(
-        pResampler: *mut ma_resampler,
+        pResampler: *const ma_resampler,
         outputFrameCount: ma_uint64,
     ) -> ma_uint64;
 }
 extern "C" {
     pub fn ma_resampler_get_expected_output_frame_count(
-        pResampler: *mut ma_resampler,
+        pResampler: *const ma_resampler,
         inputFrameCount: ma_uint64,
     ) -> ma_uint64;
 }
 extern "C" {
-    pub fn ma_resampler_get_input_latency(pResampler: *mut ma_resampler) -> ma_uint64;
+    pub fn ma_resampler_get_input_latency(pResampler: *const ma_resampler) -> ma_uint64;
 }
 extern "C" {
-    pub fn ma_resampler_get_output_latency(pResampler: *mut ma_resampler) -> ma_uint64;
+    pub fn ma_resampler_get_output_latency(pResampler: *const ma_resampler) -> ma_uint64;
 }
 #[doc = "Channel Conversion"]
 #[repr(C)]
@@ -5664,21 +5666,21 @@ extern "C" {
 }
 extern "C" {
     pub fn ma_data_converter_get_required_input_frame_count(
-        pConverter: *mut ma_data_converter,
+        pConverter: *const ma_data_converter,
         outputFrameCount: ma_uint64,
     ) -> ma_uint64;
 }
 extern "C" {
     pub fn ma_data_converter_get_expected_output_frame_count(
-        pConverter: *mut ma_data_converter,
+        pConverter: *const ma_data_converter,
         inputFrameCount: ma_uint64,
     ) -> ma_uint64;
 }
 extern "C" {
-    pub fn ma_data_converter_get_input_latency(pConverter: *mut ma_data_converter) -> ma_uint64;
+    pub fn ma_data_converter_get_input_latency(pConverter: *const ma_data_converter) -> ma_uint64;
 }
 extern "C" {
-    pub fn ma_data_converter_get_output_latency(pConverter: *mut ma_data_converter) -> ma_uint64;
+    pub fn ma_data_converter_get_output_latency(pConverter: *const ma_data_converter) -> ma_uint64;
 }
 extern "C" {
     #[doc = "Format Conversion"]
@@ -11963,7 +11965,7 @@ pub struct ma_device__bindgen_ty_4__bindgen_ty_2 {
     pub currentPeriodFramesRemainingCapture: ma_uint32,
     pub lastProcessedFramePlayback: ma_uint64,
     pub lastProcessedFrameCapture: ma_uint64,
-    pub isStarted: ma_bool32,
+    pub isStarted: ma_bool8,
 }
 #[test]
 fn bindgen_test_layout_ma_device__bindgen_ty_4__bindgen_ty_2() {
@@ -13308,6 +13310,183 @@ extern "C" {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct ma_audio_buffer_ref {
+    pub ds: ma_data_source_callbacks,
+    pub format: ma_format,
+    pub channels: ma_uint32,
+    pub cursor: ma_uint64,
+    pub sizeInFrames: ma_uint64,
+    pub pData: *const ::std::os::raw::c_void,
+}
+#[test]
+fn bindgen_test_layout_ma_audio_buffer_ref() {
+    assert_eq!(
+        ::std::mem::size_of::<ma_audio_buffer_ref>(),
+        88usize,
+        concat!("Size of: ", stringify!(ma_audio_buffer_ref))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<ma_audio_buffer_ref>(),
+        8usize,
+        concat!("Alignment of ", stringify!(ma_audio_buffer_ref))
+    );
+    fn test_field_ds() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer_ref>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).ds) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_audio_buffer_ref),
+                "::",
+                stringify!(ds)
+            )
+        );
+    }
+    test_field_ds();
+    fn test_field_format() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer_ref>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).format) as usize - ptr as usize
+            },
+            56usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_audio_buffer_ref),
+                "::",
+                stringify!(format)
+            )
+        );
+    }
+    test_field_format();
+    fn test_field_channels() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer_ref>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).channels) as usize - ptr as usize
+            },
+            60usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_audio_buffer_ref),
+                "::",
+                stringify!(channels)
+            )
+        );
+    }
+    test_field_channels();
+    fn test_field_cursor() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer_ref>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).cursor) as usize - ptr as usize
+            },
+            64usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_audio_buffer_ref),
+                "::",
+                stringify!(cursor)
+            )
+        );
+    }
+    test_field_cursor();
+    fn test_field_sizeInFrames() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer_ref>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).sizeInFrames) as usize - ptr as usize
+            },
+            72usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_audio_buffer_ref),
+                "::",
+                stringify!(sizeInFrames)
+            )
+        );
+    }
+    test_field_sizeInFrames();
+    fn test_field_pData() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer_ref>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).pData) as usize - ptr as usize
+            },
+            80usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(ma_audio_buffer_ref),
+                "::",
+                stringify!(pData)
+            )
+        );
+    }
+    test_field_pData();
+}
+extern "C" {
+    pub fn ma_audio_buffer_ref_init(
+        format: ma_format,
+        channels: ma_uint32,
+        pData: *const ::std::os::raw::c_void,
+        sizeInFrames: ma_uint64,
+        pAudioBufferRef: *mut ma_audio_buffer_ref,
+    ) -> ma_result;
+}
+extern "C" {
+    pub fn ma_audio_buffer_ref_set_data(
+        pAudioBufferRef: *mut ma_audio_buffer_ref,
+        pData: *const ::std::os::raw::c_void,
+        sizeInFrames: ma_uint64,
+    ) -> ma_result;
+}
+extern "C" {
+    pub fn ma_audio_buffer_ref_read_pcm_frames(
+        pAudioBufferRef: *mut ma_audio_buffer_ref,
+        pFramesOut: *mut ::std::os::raw::c_void,
+        frameCount: ma_uint64,
+        loop_: ma_bool32,
+    ) -> ma_uint64;
+}
+extern "C" {
+    pub fn ma_audio_buffer_ref_seek_to_pcm_frame(
+        pAudioBufferRef: *mut ma_audio_buffer_ref,
+        frameIndex: ma_uint64,
+    ) -> ma_result;
+}
+extern "C" {
+    pub fn ma_audio_buffer_ref_map(
+        pAudioBufferRef: *mut ma_audio_buffer_ref,
+        ppFramesOut: *mut *mut ::std::os::raw::c_void,
+        pFrameCount: *mut ma_uint64,
+    ) -> ma_result;
+}
+extern "C" {
+    pub fn ma_audio_buffer_ref_unmap(
+        pAudioBufferRef: *mut ma_audio_buffer_ref,
+        frameCount: ma_uint64,
+    ) -> ma_result;
+}
+extern "C" {
+    pub fn ma_audio_buffer_ref_at_end(pAudioBufferRef: *mut ma_audio_buffer_ref) -> ma_result;
+}
+extern "C" {
+    pub fn ma_audio_buffer_ref_get_available_frames(
+        pAudioBufferRef: *mut ma_audio_buffer_ref,
+        pAvailableFrames: *mut ma_uint64,
+    ) -> ma_result;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct ma_audio_buffer_config {
     pub format: ma_format,
     pub channels: ma_uint32,
@@ -13425,12 +13604,7 @@ extern "C" {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ma_audio_buffer {
-    pub ds: ma_data_source_callbacks,
-    pub format: ma_format,
-    pub channels: ma_uint32,
-    pub cursor: ma_uint64,
-    pub sizeInFrames: ma_uint64,
-    pub pData: *const ::std::os::raw::c_void,
+    pub ref_: ma_audio_buffer_ref,
     pub allocationCallbacks: ma_allocation_callbacks,
     pub ownsData: ma_bool32,
     pub _pExtraData: [ma_uint8; 1usize],
@@ -13447,108 +13621,23 @@ fn bindgen_test_layout_ma_audio_buffer() {
         8usize,
         concat!("Alignment of ", stringify!(ma_audio_buffer))
     );
-    fn test_field_ds() {
+    fn test_field_ref() {
         assert_eq!(
             unsafe {
                 let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ds) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).ref_) as usize - ptr as usize
             },
             0usize,
             concat!(
                 "Offset of field: ",
                 stringify!(ma_audio_buffer),
                 "::",
-                stringify!(ds)
+                stringify!(ref_)
             )
         );
     }
-    test_field_ds();
-    fn test_field_format() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).format) as usize - ptr as usize
-            },
-            56usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_audio_buffer),
-                "::",
-                stringify!(format)
-            )
-        );
-    }
-    test_field_format();
-    fn test_field_channels() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).channels) as usize - ptr as usize
-            },
-            60usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_audio_buffer),
-                "::",
-                stringify!(channels)
-            )
-        );
-    }
-    test_field_channels();
-    fn test_field_cursor() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).cursor) as usize - ptr as usize
-            },
-            64usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_audio_buffer),
-                "::",
-                stringify!(cursor)
-            )
-        );
-    }
-    test_field_cursor();
-    fn test_field_sizeInFrames() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).sizeInFrames) as usize - ptr as usize
-            },
-            72usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_audio_buffer),
-                "::",
-                stringify!(sizeInFrames)
-            )
-        );
-    }
-    test_field_sizeInFrames();
-    fn test_field_pData() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<ma_audio_buffer>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).pData) as usize - ptr as usize
-            },
-            80usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(ma_audio_buffer),
-                "::",
-                stringify!(pData)
-            )
-        );
-    }
-    test_field_pData();
+    test_field_ref();
     fn test_field_allocationCallbacks() {
         assert_eq!(
             unsafe {
